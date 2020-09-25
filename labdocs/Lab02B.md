@@ -14,23 +14,23 @@ In this lab, you will publish an inference pipeline as a containerized service i
 
 1. In [Azure Machine Learning studio](https://ml.azure.com), on the **Compute** page for your workspace, review the existing compute targets under each tab. These should include:
     * **Compute Instances**: The compute instance you created in a previous lab.
-    * **Compute Clusters**: The **aml-cluster** compute target you created in a previous lab.
+    * **Compute Clusters**: The compute target you created in a previous lab.
     * **Inference Clusters**: None (yet!)
     * **Attached Compute**: None (this is where you could attach a virtual machine or Databricks cluster that exists outside of your workspace)
 
 2. In the **Compute Instances** tab, if your compute instance is not already running, start it - you will use it later in this lab.
 
 3. On the **Inference Clusters** tab, add a new cluster with the following settings:
-    * **Compute name**: aks-cluster
+    * **Compute name**: *enter a unique name*
     * **Kubernetes Service**: Create new
-    * **Region**: *A region <u>other than the one where your workspace is provisioned</u>*
+    * **Region**: Select any available region
     * **Virtual Machine size**: Standard_DS2_v2 (*Use the filter to find this in the list*)
     * **Cluster purpose**: Dev-test
     * **Number of nodes**: 2
     * **Network configuration**: Basic
     * **Enable SSL configuration**: Unselected
 
-    > **Note**: Your Azure subscription may have restrictions on the number of cores you can provision, with additional regional restrictions. In this lab, it's important to create your AKS cluster in a different regions from your other compute, and to use the **Dev-test** cluster purpose (to allow your endpoint to be deployed on a cluster with fewer than the 12 core minimum for production clusters) and the **Standard_DS2_v2** virtual machine size (which includes two cores per node, so that your two nodes use only four cores).
+    > **Note**: Your Azure subscription may have restrictions on the number of cores you can provision, with additional regional restrictions. In this lab, it's important to use the **Dev-test** cluster purpose (to allow your endpoint to be deployed on a cluster with fewer than the 12 core minimum for production clusters) and the **Standard_DS2_v2** virtual machine size (which includes two cores per node, so that your two nodes use only four cores).
 
 4. Verify that the compute target is in the *Creating* state, and proceed to the next task. Returning periodically to refresh this page and verify that the cluster is being created.
 
@@ -43,7 +43,8 @@ While the inference compute is being provisioned, you can prepare the inference 
 1. On the **Designer** page, open the **Visual Diabetes Training** pipeline you created in the previous lab.
 2. In the **Create inference pipeline** drop-down list, click **Real-time inference pipeline**. After a few seconds, a new version of your pipeline named **Visual Diabetes Training-real time inference** will be opened.
 3. Rename the new pipeline to **Predict Diabetes**, and then review the new pipeline. Note that some of the transformations and training steps have been encapsulated in this pipeline so that the statistics from your training data will be used to normalize any new data values, and the trained model will be used to score the new data.
-4. The inference pipeline assumes that new data will match the schema of the original training data, so the **diabetes dataset** module from the training pipeline is included. However, this input data includes the **Diabetic** label that the model predicts, which is unintuitive to include in new patient data for which a diabetes prediction has not yet been made. Delete this module and replace it with an **Enter Data Manually** module from the **Data Input and Output** section, connected to the same **dataset** input of the **Apply Transformation** module as the **Web Service Input**. Then modify the settings of the **Enter Data Manually** module to use the following CSV input, which includes feature values without labels for three new patient observations:
+4. Note that the inference pipeline assumes that new data will match the schema of the original training data, so the **diabetes dataset** dataset from the training pipeline is included. However, this input data includes the **Diabetic** label that the model predicts, which is unintuitive to include in new patient data for which a diabetes prediction has not yet been made.
+5. Delete this the **diabetes dataset** dataset from the inference pipeline and replace it with an **Enter Data Manually** module from the **Data Input and Output** section; connecting it to the same **dataset** input of the **Apply Transformation** module as the **Web Service Input**. Then modify the settings of the **Enter Data Manually** module to use the following CSV input, which includes feature values without labels for three new patient observations:
 
     ```CSV
     PatientID,Pregnancies,PlasmaGlucose,DiastolicBloodPressure,TricepsThickness,SerumInsulin,BMI,DiabetesPedigree,Age
@@ -52,8 +53,9 @@ While the inference compute is being provisioned, you can prepare the inference 
     1228510,4,115,50,29,243,34.69215364,0.741159926,59
     ```
 
-5. The inference pipeline includes the **Evaluate Model** module, which is not useful when predicting from new data, so delete this module.
-6. The output from the **Score Model** module includes all of the input features as well as the predicted label and probability score. To limit the output to only the prediction and probability, delete the connection between the **Score Model** module and the **Web Service Output**, add an **Execute Python Script** module from the **Python Language** section, connect the output from the **Score Model** module to the **Dataset1** (left-most) input of the **Execute Python Script**, and connect the output of the **Execute Python Script** module to the **Web Service Output**. Then modify the settings of the **Execute Python Script** module to use the following code (replacing all existing code):
+6. The inference pipeline includes the **Evaluate Model** module, which is not useful when predicting from new data, so delete this module.
+7. Note that the output from the **Score Model** module includes all of the input features as well as the predicted label and probability score. 
+8. To limit the output to only the prediction and probability, delete the connection between the **Score Model** module and the **Web Service Output**, add an **Execute Python Script** module from the **Python Language** section, connect the output from the **Score Model** module to the **Dataset1** (left-most) input of the **Execute Python Script**, and connect the output of the **Execute Python Script** module to the **Web Service Output**. Then modify the settings of the **Execute Python Script** module to use the following code (replacing all existing code):
 
     ```Python
     import pandas as pd
@@ -67,19 +69,19 @@ While the inference compute is being provisioned, you can prepare the inference 
         return scored_results
     ```
 
-7. Verify that your pipeline looks similar to the following:
+9. Verify that your pipeline looks similar to the following:
 
     ![Visual Inference Pipeline](images/visual-inference.jpg)
 
-8. Submit the pipeline as a new experiment named **predict-diabetes** on the **aml-cluster** compute target you used for training. This may take a while!
+10. Submit the pipeline as a new experiment named **predict-diabetes** on the compute cluster you used for training. This may take a while!
 
 ## Task 3: Publish a Web Service
 
 Now you have an inference pipeline for real-time inferencing, which you can publish as a web service for client applications to use.
 
-1. Return to the **Compute** page and on the **Inference Compute** tab, refresh the view and verify that your **aks-cluster** compute has been created. If not, wait for your inference cluster to be created. This may take quite a bit of time.
+1. Return to the **Compute** page and on the **Inference Compute** tab, refresh the view and verify that your inference cluster has been created. If not, wait for it to be created. This may take quite a bit of time.
 2. Switch back to the **Designer** tab and reopen your **Predict Diabetes** inference pipeline. If it has not yet finished running, await it's completion. Then visualize the **Result dataset** output of the **Execute Python Script** module to see the predicted labels and probabilities for the three patient observations in the input data.
-3. At the top right, click **Deploy**, and set up a new real-time endpoint named **predict-diabetes** on the **aks-cluster** compute target you created.
+3. At the top right, click **Deploy**, and set up a new real-time endpoint named **predict-diabetes** on the inference cluster you created.
 4. Wait for the web service to be deployed - this can take several minutes. The deployment status is shown at the top left of the designer interface.
 
     > **Tip**: While you're waiting for your service to be deployed, why not spend some time reviewing the Azure Machine Learning Designer documentation at [https://docs.microsoft.com/azure/machine-learning/service/concept-designer](https://docs.microsoft.com/azure/machine-learning/service/concept-designer)?
@@ -101,6 +103,6 @@ Now you can test your deployed service from a client application - in this case,
 The web service is hosted in a Kubernetes cluster. If you don't intend to experiment with it further, you should delete the endpoint and the cluster to avoid accruing unnecessary Azure charges. You should also stop other compute resources until you need them again.
 
 1. In [Azure Machine Learning studio](https://ml.azure.com), on the **Endpoints** tab, select the **predict-diabetes** endpoint. Then click the **Delete** (&#128465;) button and confirm that you want to delete the endpoint.
-2. On the **Compute** page, on the **Inference clusters** tab, select the select the **aks-cluster** endpoint. Then click the **Delete** (&#128465;) button and confirm that you want to delete the compute target.
-3. On the **Compute** page, on the **Compute clusters** tab, edit the **aml-cluster** and reset the **minimum number of nodes** to 0.
+2. On the **Compute** page, on the **Inference clusters** tab, select the select your inference cluster. Then click the **Delete** (&#128465;) button and confirm that you want to delete the compute target.
+3. On the **Compute** page, on the **Compute clusters** tab, edit your compute cluster and reset the **minimum number of nodes** to 0.
 4. If you're finished working with Azure Machine Learning for the day, on the **Compute Instances** tab, select your compute instance and click **Stop** to shut it down. Otherwise, leave it running for the next lab.

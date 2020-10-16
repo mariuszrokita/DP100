@@ -1,1 +1,9 @@
+azureml-sdk==1.15.0
+azureml-widgets
+azureml-mlflow
+jupyterlab
+jupyter_contrib_nbextensions
+matplotlib
+mlflow
 notebook
+pandas

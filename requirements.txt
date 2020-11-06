@@ -1,4 +1,4 @@
-azureml-sdk==1.15.0
+azureml-sdk
 azureml-widgets
 azureml-mlflow
 jupyterlab

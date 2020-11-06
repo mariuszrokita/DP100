@@ -4,12 +4,15 @@ channels:
   - conda-forge
 dependencies:
   - python=3.7
+  - joblib
   - matplotlib
+  - mlflow
   - numpy
   - pandas
-  - mlflow
   - pip
+  - scikit-learn
   - pip:
     - azureml-defaults
-    - azureml-widgets
     - azureml-mlflow
+    - azureml-sdk
+    - azureml-widgets

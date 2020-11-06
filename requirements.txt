@@ -1,9 +1,0 @@
-azureml-sdk
-azureml-widgets
-azureml-mlflow
-jupyterlab
-jupyter_contrib_nbextensions
-matplotlib
-mlflow
-notebook
-pandas
